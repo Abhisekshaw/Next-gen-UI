@@ -1,0 +1,29 @@
+if (Flag_Control_State_ON && !KEEP_TOGGLE_STATUS)
+    {
+      if( Flag_Relay_State && current_thermostate_State )
+      {
+        data_json["OptimizerMode"] = "OPTIMIZATION+COMPON";
+      }
+      else
+      {
+        if(Flag_Relay_State == RESET)
+        {
+          data_json["OptimizerMode"] = "OPTIMIZATION+COMPOFF+OPT";
+        }
+        else
+        {
+          data_json["OptimizerMode"] = "OPTIMIZATION+COMPOFF+THRMO";
+        }
+      }
+    }
+    else if (!Flag_Control_State_ON && !KEEP_TOGGLE_STATUS)
+    {
+      if( Flag_Relay_State && current_thermostate_State )
+      {
+        data_json["OptimizerMode"] = "NON-OPTIMIZATION+COMPON";
+      }
+      else
+      {
+        data_json["OptimizerMode"] = "NON-OPTIMIZATION+COMPOFF";
+      }
+    }

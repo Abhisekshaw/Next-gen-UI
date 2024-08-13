@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stacked Column Chart with Highcharts</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+</head>
+<body>
+
+<div id="container" style="width:100%; height:400px;"></div>
+
+<script>
+    // Data processing
+    const data = {
+        "July 1, 2024": [
+            { on: 1719794400, off: 1719795000 },
+            { on: 1719796200, off: 1719796800 }
+        ],
+        "July 2, 2024": [
+            { on: 1719880800, off: 1719881400 },
+            { on: 1719882000, off: 1719882600 },
+            { on: 1719883200, off: 1719883800 }
+        ],
+        "July 3, 2024": [
+            { on: 1719967200, off: 1719967800 }
+        ],
+        "July 4, 2024": [
+            { on: 1720053600, off: 1720054200 },
+            { on: 1720054800, off: 1720055400 },
+            { on: 1720056000, off: 1720056600 },
+            { on: 1720057200, off: 1720057800 }
+        ],
+        "July 5, 2024": [
+            { on: 1720140000, off: 1720140600 },
+            { on: 1720141200, off: 1720141800 }
+        ],
+        "July 6, 2024": [
+            { on: 1720226400, off: 1720227000 },
+            { on: 1720227600, off: 1720228200 },
+            { on: 1720228800, off: 1720229400 },
+            { on: 1720230000, off: 1720230600 }
+        ],
+        "July 7, 2024": [
+            { on: 1720312800, off: 1720313400 },
+            { on: 1720314000, off: 1720314600 }
+        ],
+        "July 8, 2024": [
+            { on: 1720399200, off: 1720399800 },
+            { on: 1720400400, off: 1720401000 },
+            { on: 1720401600, off: 1720402200 },
+            { on: 1720402800, off: 1720403400 },
+            { on: 1720404000, off: 1720404600 }
+        ],
+        "July 9, 2024": [
+            { on: 1720485600, off: 1720486200 },
+            { on: 1720486800, off: 1720487400 }
+        ],
+        "July 10, 2024": [
+            { on: 1720572000, off: 1720572600 },
+            { on: 1720573200, off: 1720573800 },
+            { on: 1720574400, off: 1720575000 }
+        ]
+    };
+
+    const categories = Object.keys(data);
+    const series = [];
+
+    categories.forEach((date) => {
+        const dayData = data[date];
+        dayData.forEach((entry, index) => {
+            const duration = (entry.off - entry.on) / 60; // Convert to minutes
+            if (!series[index]) {
+                series[index] = { name: `Period ${index + 1}`, data: [] };
+            }
+            series[index].data.push(duration);
+        });
+    });
+
+    // Highcharts configuration
+    Highcharts.chart('container', {
+        chart: {
+            type: 'column'
+        },
+        title: {
+            text: 'AC Usage in July 2024'
+        },
+        xAxis: {
+            categories: categories,
+            title: {
+                text: 'Date'
+            }
+        },
+        yAxis: {
+            min: 0,
+            title: {
+                text: 'Duration (minutes)'
+            }
+        },
+        legend: {
+            reversed: true
+        },
+        plotOptions: {
+            series: {
+                stacking: 'normal'
+            }
+        },
+        series: series
+    });
+</script>
+
+</body>
+</html>

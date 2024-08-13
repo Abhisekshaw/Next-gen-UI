@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AC On/Off Times</title>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/modules/export-data.js"></script>
+    <script src="https://code.highcharts.com/modules/accessibility.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
+</head>
+
+<body>
+    <div id="container" style="width:100%; height:800px;"></div>
+    <script>
+
+// let arr =[];
+// for(let i=0;i<10000;++i){
+//     let longString= "0".repeat(1000000);
+//     arr[i]=longString.slice(0,20)
+// }
+
+
+        // JSON data
+        const data = {
+            "2024-07-20": [
+                {
+                    "FirstACOnTime": 1721464407,
+                    "lastACOffTime": 1721489228
+                }
+            ],
+            "2024-07-21": [
+                {
+                    "FirstACOnTime": 1721552282,
+                    "lastACOffTime": 1721560001
+                }
+            ],
+            "2024-07-22": [
+                {
+                    "FirstACOnTime": 1721620666,
+                    "lastACOffTime": 1721658543
+                }
+            ],
+            "2024-07-23": [
+                {
+                    "FirstACOnTime": 1721704407,
+                    "lastACOffTime": 1721748554
+                }
+            ],
+            "2024-07-24": [
+                {
+                    "FirstACOnTime": 1721792868,
+                    "lastACOffTime": 1721836068
+                }
+            ],
+            "2024-07-25": [
+                {
+                    "FirstACOnTime": 1721879652,
+                    "lastACOffTime": 1721922212
+                }
+            ],
+            "2024-07-26": [
+                {
+                    "FirstACOnTime": 1721966155,
+                    "lastACOffTime": "--"
+                }
+            ]
+        };
+
+        // Prepare data for Highcharts
+        const categories = [];
+        const acIntervals = [];
+
+        for (const date in data) {
+            console.log(date);
+            categories.push(date);
+            const firstOnTime = new Date(data[date][0].FirstACOnTime * 1000);
+            // const lastOffTime = data[date][0].lastACOffTime === "--" ? null : new Date(data[date][0].lastACOffTime * 1000);
+
+            let lastOffTime;
+            if (data[date][0].lastACOffTime === "--") {
+                lastOffTime = new Date(Date.UTC(
+                    firstOnTime.getUTCFullYear(),
+                    firstOnTime.getUTCMonth(),
+                    firstOnTime.getUTCDate(),
+                    23, 59, 59
+                ))
+            } else {
+                lastOffTime = new Date(data[date][0].lastACOffTime * 1000)
+            }
+
+            if (lastOffTime) {
+                const startTime = Date.UTC(2024, 6, parseInt(date.split('-')[2]), firstOnTime.getUTCHours(), firstOnTime.getUTCMinutes(), firstOnTime.getUTCSeconds());
+                const endTime = Date.UTC(2024, 6, parseInt(date.split('-')[2]), lastOffTime.getUTCHours(), lastOffTime.getUTCMinutes(), lastOffTime.getUTCSeconds());
+                console.log(startTime);
+
+                acIntervals.push([firstOnTime.getUTCHours() * 3600 * 1000 + firstOnTime.getUTCMinutes() * 60 * 1000 + firstOnTime.getUTCSeconds() * 1000, endTime - startTime]);
+                console.log(acIntervals);
+            } 
+            // else {
+            //     acIntervals.push([firstOnTime.getUTCHours() * 3600 * 1000 + firstOnTime.getUTCMinutes() * 60 * 1000 + firstOnTime.getUTCSeconds() * 1000, 0]); // No duration if lastACOffTime is not available
+            // }
+        }
+
+        // Highcharts configuration
+        Highcharts.chart('container', {
+            chart: {
+                type: 'columnrange',
+                inverted: false
+            },
+            title: {
+                text: 'AC On/Off Times'
+            },
+            xAxis: {
+                categories: categories,
+                title: {
+                    text: 'Date'
+                }
+            },
+            yAxis: {
+                type: 'datetime',
+                title: {
+                    text: 'Time'
+                },
+                dateTimeLabelFormats: {
+                    hour: '%H:%M'
+                },
+                tickInterval: 3600 * 1000, // 1 hour
+                labels: {
+                    format: '{value:%H hours}' // Format to show hours and minutes
+                },
+                min: 0,
+                max: 8.64e+7
+                //min: 0,
+                //max: 24 * 3600 * 1000 // 24 hours in milliseconds
+            },
+            series: [{
+                name: 'AC On/Off Duration',
+                data: acIntervals,
+                tooltip: {
+                    pointFormatter: function () {
+                        const start = Highcharts.dateFormat('%H:%M:%S', this.low);
+                        const duration = Highcharts.dateFormat('%H:%M:%S', this.low + this.high);
+                        console.log(acIntervals);
+                        console.log(this.high);
+                        return `<b>${categories[this.x]}</b><br/>Start: ${start}<br/>Duration: ${ Highcharts.dateFormat('%H:%M:%S',  this.high)}`;
+                    }
+                }
+            }],
+            tooltip: {
+                formatter: function () {
+                    return this.series.tooltipOptions.pointFormatter.call(this.point);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
