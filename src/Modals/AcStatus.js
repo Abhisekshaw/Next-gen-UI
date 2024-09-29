@@ -10,14 +10,17 @@ HighchartsMore(Highcharts); // Initialize the highcharts-more module
 const AcStatus = ({ data, closeModal, id }) => {
   const [tableData, setTableData] = useState([]);
   const [chartOptions, setChartOptions] = useState({});
-
-  const ActualData = useMemo(() => data.filter(element => element._id === id), [data, id]);
+  const [FilteredData, setFilteredData] = useState([]);
+  
 
   useEffect(() => {
+    let filteredData = id? data.filter(element => element._id === id) : data;
+    setFilteredData(filteredData);
+
     const updatedTableData = [];
     const newDataObject = {};
 
-    ActualData.forEach(item => {
+    filteredData.forEach(item => {
       const dateLabel = moment.unix(item.StartTime).tz('Asia/Kolkata').format('YYYY-MM-DD');
 
       if (!newDataObject[dateLabel]) {
@@ -116,7 +119,7 @@ const AcStatus = ({ data, closeModal, id }) => {
         enabled: false // Disable the watermark
       }
     });
-  }, [ActualData]);
+  }, [data, id]);
 
   function handleclick() {
     setTableData([]);
@@ -215,6 +218,7 @@ const AcStatus = ({ data, closeModal, id }) => {
   const endIndex = startIndex + itemsPerPage;
   const displayedData = tableData.slice(startIndex, endIndex);
 
+  if(closeModal ){
   return (
     <div
       style={{ maxHeight: "auto", overflowY: "auto" }}
@@ -254,7 +258,7 @@ const AcStatus = ({ data, closeModal, id }) => {
                 <div className="card" style={{ background: '#dafedf', padding: '0!important' }}>
                   <div className="card-body" style={{ padding: '0 2px!important' }}>
                     <h6 className="text-dark">Optimizer Id</h6>
-                    <p className="">{ActualData[0]?._id}</p>
+                    <p className="">{FilteredData[0]?._id}</p>
                   </div>
                 </div>
               </div>
@@ -262,7 +266,7 @@ const AcStatus = ({ data, closeModal, id }) => {
                 <div className="card" style={{ background: '#fce7ef', padding: '0!important' }}>
                   <div className="card-body" style={{ padding: '0 2px!important' }}>
                     <h6 className="text-dark">Optimizer Name</h6>
-                    <p className="">{ActualData[0]?.OptimizerName}</p>
+                    <p className="">{FilteredData[0]?.OptimizerName}</p>
                   </div>
                 </div>
               </div>
@@ -270,7 +274,7 @@ const AcStatus = ({ data, closeModal, id }) => {
                 <div className="card" style={{ background: '#e7f0f8', padding: '0!important' }}>
                   <div className="card-body" style={{ padding: '0 2px!important' }}>
                     <h6 className="text-dark">AC Tonage</h6>
-                    <p className="">{ActualData[0]?.ACTonnage}</p>
+                    <p className="">{FilteredData[0]?.ACTonnage}</p>
                   </div>
                 </div>
               </div>
@@ -360,6 +364,93 @@ const AcStatus = ({ data, closeModal, id }) => {
       </div>
     </div>
   );
+}else{
+  return(
+  <div className="container mt-4">
+          {/* <h4 className="text-center mb-3">AC ON/OFF Details</h4> */}
+           <div className="container mt-4">
+            <div className="row">
+              <div className="col-md-6">
+                <HighchartsReact
+                  highcharts={Highcharts}
+                  options={chartOptions}
+                />
+              </div>
+              <div className="col-md-5">
+                <table className="table mt-0">
+                  <thead className="table-dark">
+                    <tr>
+                      <th>Date</th>
+                      <th scope="col">AC On Times</th>
+                      <th scope="col">AC Off Times</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedData.map((item, index) => (
+                      <tr key={index}>
+                        <td>{moment.unix(item.ACOnTime ? item.ACOnTime : item.ACOffTime).tz('Asia/Kolkata').format('YYYY-MM-DD')}</td>
+                        <td>{item.ACOnTime ? new Date(item.ACOnTime * 1000).toLocaleTimeString() : '--'}</td>
+                        <td>{item.ACOffTime ? new Date(item.ACOffTime * 1000).toLocaleTimeString() : '--'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {/* Pagination */}
+                <div className="grid px-0 py-0 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
+                  <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
+                    <nav aria-label="Table navigation">
+                      <ul className="inline-flex items-center">
+                        <li>
+                          <button
+                            className="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-purple"
+                            aria-label="Previous"
+                            disabled={currentPage === 1}
+                            onClick={() => handlePageChange(currentPage - 1)}
+                          >
+                            <svg
+                              aria-hidden="true"
+                              className="w-4 h-4 fill-current"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              ></path>
+                            </svg>
+                          </button>
+                        </li>
+                        {renderPaginationButtons()}
+                        <li>
+                          <button
+                            className="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-purple"
+                            aria-label="Next"
+                            disabled={currentPage === Math.ceil(tableData.length / itemsPerPage)}
+                            onClick={() => handlePageChange(currentPage + 1)}
+                          >
+                            <svg
+                              className="w-4 h-4 fill-current"
+                              aria-hidden="true"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                                clipRule="evenodd"
+                                fillRule="evenodd"
+                              ></path>
+                            </svg>
+                          </button>
+                        </li>
+                      </ul>
+                    </nav>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+  );
+}
 };
 
 export default AcStatus;

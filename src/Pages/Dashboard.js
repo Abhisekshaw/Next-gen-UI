@@ -9,6 +9,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { CircularProgressbar } from "react-circular-progressbar";
 import "react-circular-progressbar/dist/styles.css";
 import { DashboardApi } from "../Slices/DashboardSlice";
+import { fetchEnterprises } from "../Slices/Enterprise/NewEnterpriseDataSlice";
 function Dashboard() {
   const dispatch = useDispatch();
   const chartRef = useRef(null);
@@ -24,11 +25,21 @@ function Dashboard() {
   const { dashboard_response, dashboard_error } = useSelector(
     (state) => state.dashboardSlice
   );
+  const { enterprises, loading, error } = useSelector(state => state.enterpriseDataSlice);
   const header = {
     headers: {
       Authorization: `Bearer ${window.localStorage.getItem("token")}`,
     },
   };
+ 
+ 
+  
+
+  
+
+
+// page loading events - start
+
 
   useEffect(() => {
     // Your jQuery code to initialize the date range picker
@@ -156,9 +167,12 @@ function Dashboard() {
     return () => LineChart.destroy();
   }, []);
 
+  
   useEffect(() => {
     dispatch(DashboardApi({ header }));
+    dispatch(fetchEnterprises({header})); // Dispatch the async thunk when the component mounts
   }, [dispatch]);
+
   useEffect(() => {
     if (dashboard_response) {
       const {
@@ -176,6 +190,94 @@ function Dashboard() {
       }));
     }
   }, [dispatch, dashboard_response, dashboard_error]);
+
+  
+  // page loading events - end
+  const handleEnterpriseChange = (event) => {
+    setSelectedEnterprise(event.target.value);
+    setSelectedCountryState('');
+  };
+
+  const handleCountryStateChange = (event) => {
+    setSelectedCountryState(event.target.value);
+  };
+
+   
+  const [selectedEnterprise, setSelectedEnterprise] = useState('');
+  const [selectedCountryState, setSelectedCountryState] = useState('');
+
+  // Get states and cities based on the selected country and state
+  const selectedEnterpriseData = enterprises.find(enterprise => enterprise.entepriseId  === selectedEnterprise);
+  const countrystates = selectedEnterpriseData ? selectedEnterpriseData.states : [];
+  const selectedCountryStateData = countrystates.find(countrystate => countrystate.stateId === selectedCountryState);
+
+
+  useEffect(()=> {
+    const countAll = () => {
+      console.log("called device num")
+      let totalEnterprises = 0;
+      let totalStates = 0;
+      let totalLocations = 0;
+      let totalGateways = 0;
+      let totalOptimizers = 0;
+      if(selectedCountryState != "" && selectedEnterprise != ""){
+        enterprises.forEach((enterprise) => {
+          if(enterprise.entepriseId == selectedEnterprise) {
+            totalEnterprises++; // Count the country
+            enterprise.states.forEach((state) => {
+              if(state.stateId == selectedCountryState) {
+                totalStates++; // Count the state
+                state.locations.forEach((location) => {
+                  totalLocations++; // Count the city
+                  location.gateways.forEach((gateway) => {
+                    totalGateways++; 
+                    totalOptimizers += location.gateways.length;
+                  });
+                });
+              }
+            });
+          }
+        });
+      }else if(selectedEnterprise != ""){
+        enterprises.forEach((enterprise) => {
+          if(enterprise.entepriseId == selectedEnterprise) {
+            totalEnterprises++; // Count the country
+            enterprise.states.forEach((state) => {
+                totalStates++; // Count the state
+                state.locations.forEach((location) => {
+                  totalLocations++; // Count the city
+                  location.gateways.forEach((gateway) => {
+                    totalGateways++; 
+                    totalOptimizers += location.gateways.length;
+                  });
+                });
+            });
+          }
+        });
+      }else {
+        enterprises.forEach((enterprise) => {
+            totalEnterprises++; // Count the country
+            enterprise.states.forEach((state) => {
+                totalStates++; // Count the state
+                state.locations.forEach((location) => {
+                  totalLocations++; // Count the city
+                  location.gateways.forEach((gateway) => {
+                    totalGateways++; 
+                    totalOptimizers += location.gateways.length;
+                  });
+                });
+            });          
+        });
+      }
+      return {
+        totalGateway: totalGateways,
+        totalOptimizer: totalOptimizers,
+        totalCustomer: totalEnterprises,
+        state: totalStates
+      };
+    }
+    setDeviceNum(countAll);
+  },[enterprises, selectedEnterprise, selectedCountryState]);
 
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
@@ -231,22 +333,33 @@ function Dashboard() {
                       <span className="text-gray-700 dark:text-gray-400">
                         Enterprise
                       </span>
-                      <select className="w-full block mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
-                        <option>Enterprise</option>
-                        <option>Enterprise</option>
-                        <option>Enterprise</option>
-                        <option>Enterprise</option>
+                      <select className="w-full block mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray"
+                      onChange={handleEnterpriseChange} 
+                        value={selectedEnterprise}
+                        >
+                        <option value="">Select Enterprise</option>
+                        {enterprises.map((enterprise) => (
+                        <option key={enterprise.enterpriseName} value={enterprise.entepriseId}>
+                            {enterprise.enterpriseName}
+                        </option>
+                        ))}
                       </select>
                     </label>
                     <label className="w-full block mt-4 text-sm flex justify-between space-x-3 items-center">
                       <span className="text-gray-700 dark:text-gray-400">
                         State
                       </span>
-                      <select className="w-full block mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray">
-                        <option>State</option>
-                        <option>State</option>
-                        <option>State</option>
-                        <option>State</option>
+                      <select className="w-full block mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray"
+                          onChange={handleCountryStateChange} 
+                          value={selectedCountryState} 
+                          disabled={!selectedEnterprise}
+                      >
+                          <option value="">Select State</option>
+                          {countrystates.map((countrystate) => (
+                          <option key={countrystate.stateName} value={countrystate.stateId}>
+                              {countrystate.stateName}
+                          </option>
+                          ))}
                       </select>
                     </label>
                     <button

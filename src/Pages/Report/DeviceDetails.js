@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import axios from "axios";
 import Loader from "../../utils/Loader";
 
-const Devicedetails = (Data) => {
+const Devicedetails = ({selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, settingsComplete}) => {
   const dispatch = useDispatch();
   const [page, setPage] = useState("");
   const [deviceData, setDeviceData] = useState([]);
@@ -58,7 +58,7 @@ const Devicedetails = (Data) => {
   // Change: Reset currentPage to 1 when Data prop changes
   useEffect(() => {
     setCurrentPage({ page: 1, flag: '', PrevTimeStamp: '' });
-  }, [Data, intervalInSeconds, selectedOption]);
+  }, [selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, intervalInSeconds, selectedOption]);
 
   // Array of options
   const options = Object.keys(optionIntervals);
@@ -142,20 +142,27 @@ const Devicedetails = (Data) => {
     return timestamp;
   }
   useEffect(() => {
-    const Page = currentPage;
-    // const data = Data.Data;
+    if(settingsComplete) {
+      const Page = currentPage;
+      // const data = Data.Data;
+      console.log("Device Reloading: " + new Date())
+      const data = {
+        enterprise_id: selectedEnterprise,
+        state_id: selectedCountryState,
+        location_id: selectedLocation,
+        gateway_id: selectedGateway,
+        startDate: pstartDate,
+        endDate: pendDate,
+        Interval: intervalInSeconds,
+        FirstRef: timeStamp?.first,
+        LastRef: timeStamp?.last,
 
-    const data = {
-      ...Data.Data,
-      Interval: intervalInSeconds,
-      FirstRef: timeStamp?.first,
-      LastRef: timeStamp?.last,
+        current_interval: current_interval
 
-      current_interval: current_interval
-
-    };
-    dispatch(DeviceData({ Page, data, header }));
-  }, [currentPage, Data]);
+      };
+      dispatch(DeviceData({ Page, data, header }));
+    }
+  }, [currentPage, selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, settingsComplete]);
 
 
 
@@ -511,7 +518,14 @@ const Devicedetails = (Data) => {
 
 
   const handleDownloadDeviceData = async () => {
-    const requestBody = { ...Data.Data, Interval: intervalInSeconds };
+    const requestBody = { 
+      enterprise_id: selectedEnterprise,
+      state_id: selectedCountryState,
+      location_id: selectedLocation,
+      gateway_id: selectedGateway,
+      startDate: pstartDate,
+      endDate: pendDate, 
+      Interval: intervalInSeconds };
 
     await downloadFile(
       `${process.env.REACT_APP_API}/api/admin/download/all/devicedata/report`,
@@ -555,6 +569,7 @@ const Devicedetails = (Data) => {
               flexDirection: "column",
             }}
           >
+            
             <button
               type="button"
               className="py-2 px-3 mt-2 focus:outline-none text-white rounded-lg   "
@@ -573,7 +588,7 @@ const Devicedetails = (Data) => {
               >
                 <path d="M3 15v4c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2v-4M17 9l-5 5-5-5M12 12.8V2.5" />
               </svg>
-            </button>
+            </button> 
           </div>
         </div>
         {/* <!-- table data --> */}

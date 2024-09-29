@@ -251,3 +251,8 @@
 .custom-link:hover {
   text-decoration: underline; /* Add underline on hover */
 }
+
+select.error {
+  border: 2px solid red;
+  background-color: #ffe5e5; /* Light red background */
+}

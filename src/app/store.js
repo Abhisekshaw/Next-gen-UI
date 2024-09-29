@@ -11,6 +11,8 @@ import SettingsSlice from "../Slices/SettingsSlice";
 import ByPassSlice from "../Slices/Enterprise/ByPassSlice";
 import  ReportSlice  from "../Slices/ReportSlices";
 import DashboardSlice from "../Slices/DashboardSlice";
+import dropdownSlice from "../Slices/Enterprise/NewEnterpriseDataSlice";
+
 export const store = configureStore({
   reducer: {
     EnterpriseData: EnterpriseSliceReducer,
@@ -25,5 +27,6 @@ export const store = configureStore({
     byPassSlice:ByPassSlice,
     reportSlice:ReportSlice,
     dashboardSlice:DashboardSlice,
+    enterpriseDataSlice: dropdownSlice
   },
 });

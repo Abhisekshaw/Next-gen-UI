@@ -23,6 +23,9 @@ export const ADDENTERPRISE = (data, header) => api.post("/api/admin/add/enterpri
 // EDIT ENTERPRISE
 export const EDITENTERPRISE = (EnterpriseId, data, header) => api.post(`/api/admin/update/enterprise/${EnterpriseId}`, data, header);
 
+// EDIT ENTERPRISE
+export const GETALLENTERPRISE = (header) => api.get(`api/admin/get/enterprise`, header);
+
 // STATE TABLE API
 export const STATETABLE = (EnterpriseId, header) => api.get(`/api/admin/get/enterprise/state/list/${EnterpriseId}`, header);
 
@@ -91,7 +94,7 @@ export const DELETE = (deleteData, header) => api.post(`/api/admin/delete/all`, 
 //Report
 export const METERDATA = (Page, data, header) => api.post(`/api/admin/get/all/meter/data?page=${Page.page}&flag=${Page.flag}&PrevTimeStamp=${Page.PrevTimeStamp}&pageSize=100`, data, header);
 export const DEVICEDATA = (Page, data, header) => api.post(`/api/admin/get/all/device/data?page=${Page.page}&flag=${Page.flag}&PrevTimeStamp=${Page.PrevTimeStamp}pageSize=20`, data, header);
-export const TABLEGRAPH = (data, header) => api.post(`/api/admin//get/all/usage/trends`, data, header);
+export const TABLEGRAPH = (data, header) => api.post(`/api/admin/get/all/usage/trends`, data, header);
 
 
 // ACCUWEATHER
