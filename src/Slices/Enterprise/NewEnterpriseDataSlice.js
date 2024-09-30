@@ -12,23 +12,8 @@ export const fetchEnterprises = createAsyncThunk(
       return enterprises;
     }
     const response = await GETALLENTERPRISE(header);   
-    
-    // process and aggregates counts
-    
     return response.data.data;
   }
-
-//   'countries/fetchCountries',
-//   async (_, { getState }) => {
-//     const { countries } = getState().country; // Access state to check if data already exists
-//     if (countries.length > 0) {
-//       // If data exists, return early to avoid making the API call
-//       return countries;
-//     }
-
-//     const response = await axios.get('https://example.com/api/countries');
-//     return response.data;
-//   }
 );
 
 const dropdownSlice = createSlice({

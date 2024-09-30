@@ -12,6 +12,7 @@ import ByPassSlice from "../Slices/Enterprise/ByPassSlice";
 import  ReportSlice  from "../Slices/ReportSlices";
 import DashboardSlice from "../Slices/DashboardSlice";
 import dropdownSlice from "../Slices/Enterprise/NewEnterpriseDataSlice";
+import ACOnOffSlice from "../Slices/Enterprise/OptimizerOnOffSlice";
 
 export const store = configureStore({
   reducer: {
@@ -27,6 +28,8 @@ export const store = configureStore({
     byPassSlice:ByPassSlice,
     reportSlice:ReportSlice,
     dashboardSlice:DashboardSlice,
-    enterpriseDataSlice: dropdownSlice
+    enterpriseDataSlice: dropdownSlice,
+    aconoffslice: ACOnOffSlice 
+    
   },
 });

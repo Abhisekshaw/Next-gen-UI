@@ -1,38 +1,27 @@
 //import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
-  GETALLENTERPRISE
+  ACONOFF
 } from "../../api/api";
 
 export const fetchOnOff = createAsyncThunk(
   "OptimizerOnOff",
-  async ({ header }, { getState }) => {
-    const enterprises = getState().enterpriseDataSlice.enterprises;
-    if(enterprises.length > 0){
-      return enterprises;
-    }
-    const response = await GETALLENTERPRISE(header);
+  async ({ data, header }, { getState }) => {
+    // const aconoff = getState().aconoffslice.aconoff;
+    // if(aconoff.length > 0){
+    //   return aconoff;
+    // }
+    const response = await ACONOFF(data, header);
     // process and aggregates counts    
+    //console.log(JSON.stringify(response.data.data));
     return response.data.data;
   }
-
-//   'countries/fetchCountries',
-//   async (_, { getState }) => {
-//     const { countries } = getState().country; // Access state to check if data already exists
-//     if (countries.length > 0) {
-//       // If data exists, return early to avoid making the API call
-//       return countries;
-//     }
-
-//     const response = await axios.get('https://example.com/api/countries');
-//     return response.data;
-//   }
 );
 
-const optimizerOnOffSlice = createSlice({
+const ACOnOffSlice = createSlice({
   name: 'OptimizerOnOff',
   initialState: {
-    enterprises: [],
+    aconoff: [],
     loading: false,
     error: null,
   },
@@ -40,21 +29,21 @@ const optimizerOnOffSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchEnterprises.pending, (state) => {
+      .addCase(fetchOnOff.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchEnterprises.fulfilled, (state, action) => {
+      .addCase(fetchOnOff.fulfilled, (state, action) => {
         state.loading = false;
-        state.enterprises = action.payload;
+        state.aconoff = action.payload;
       })
-      .addCase(fetchEnterprises.rejected, (state, action) => {
+      .addCase(fetchOnOff.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       });
   },
 });
 
-export const {} = optimizerOnOffSlice.actions;
+export const {} = ACOnOffSlice.actions;
 
-export default optimizerOnOffSlice.reducer;
+export default ACOnOffSlice.reducer;

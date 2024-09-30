@@ -3,86 +3,134 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import Highcharts from 'highcharts';
 import HighchartsReact from 'highcharts-react-official';
 import HighchartsMore from 'highcharts/highcharts-more'; // Import highcharts-more module
+import HighchartsXrange from 'highcharts/modules/xrange';
 import moment from 'moment-timezone';
 
-HighchartsMore(Highcharts); // Initialize the highcharts-more module
+//HighchartsMore(Highcharts); // Initialize the highcharts-more module
+//HighchartsXrange(Highcharts);
 
 const AcStatus = ({ data, closeModal, id }) => {
   const [tableData, setTableData] = useState([]);
   const [chartOptions, setChartOptions] = useState({});
   const [FilteredData, setFilteredData] = useState([]);
-  
 
   useEffect(() => {
-    let filteredData = id? data.filter(element => element._id === id) : data;
+    let filteredData = id ? data.filter(element => element.optimizerId === id) : data;
+
     setFilteredData(filteredData);
+    //console.log(filteredData);
 
-    const updatedTableData = [];
-    const newDataObject = {};
+    const countOccurrences = filteredData.reduce((acc, curr) => {
+      acc[curr.date] = (acc[curr.date] || 0) + 1;
+      return acc;
+    }, {});
 
-    filteredData.forEach(item => {
-      const dateLabel = moment.unix(item.StartTime).tz('Asia/Kolkata').format('YYYY-MM-DD');
+    let maxDateLabel = null;
+    let maxCount = 0;
 
-      if (!newDataObject[dateLabel]) {
-        newDataObject[dateLabel] = [];
+    for (const [name, count] of Object.entries(countOccurrences)) {
+      if (count > maxCount) {
+        maxDateLabel = name;
+        maxCount = count;
       }
-
-      newDataObject[dateLabel].push({
-        FirstACOnTime: item?.ACCutoffTimes[0]?.ACOnTime,
-        lastACOffTime: item?.ACCutoffTimes[item?.ACCutoffTimes.length - 1]?.ACOffTime || "--"
-      });
-
-      item?.ACCutoffTimes.forEach(time => updatedTableData.push(time));
-    });
-
-    setTableData(updatedTableData);
-
-    const categories = [];
-    const acIntervals = [];
-    for (const date in newDataObject) {
-      categories.push(date);
-
-      const firstOnTime = new Date(newDataObject[date][0].FirstACOnTime * 1000);
-      let lastOffTime;
-
-      if (newDataObject[date][0].lastACOffTime === "--") {
-        lastOffTime = new Date(Date.UTC(
-          firstOnTime.getUTCFullYear(),
-          firstOnTime.getUTCMonth(),
-          firstOnTime.getUTCDate(),
-          23, 59, 59 // End of day in UTC
-        ));
-      } else {
-        lastOffTime = new Date(newDataObject[date][0].lastACOffTime * 1000);
-      }
-      const startTime = firstOnTime.getHours() * 3600 * 1000 + firstOnTime.getMinutes() * 60 * 1000 + firstOnTime.getSeconds() * 1000;
-
-      const endTime = lastOffTime.getHours() * 3600 * 1000 + lastOffTime.getMinutes() * 60 * 1000 + lastOffTime.getSeconds() * 1000;
-      acIntervals.push([startTime, endTime]);
     }
+    const categories = [];
+    const acIntervalsOn = [];
+    const acIntervalsOff = [];
+    const secondsInaDay = (3600 * 24);
+    let dateLabel = "";
+    let runningCounter = 1;
+    let series = [];
+    let lastSTime = 0;
+    let lastETime = 0;
+    let timeAdjustmentForIST = 19800; // 5.5 hours
+    filteredData.forEach(item => {
+
+      let adjustedStartTime =  item.starttime + timeAdjustmentForIST;
+      let adjustedEndTime =  item.endtime + timeAdjustmentForIST;
+      let startTimeSeconds = adjustedStartTime%secondsInaDay;
+      if (dateLabel == "") {
+        dateLabel = item.date;
+        categories.push(dateLabel);
+        runningCounter = 0;
+
+        lastETime=0;
+        // check if the time needs to be filled 
+        if(startTimeSeconds > 0) {          
+          lastETime = adjustedStartTime - (startTimeSeconds);          
+        }          
+      }
+      else if (dateLabel != item.date) {
+
+        // close out the last date data
+        // fill the rest of the counters with empty
+        for (++runningCounter; runningCounter < maxCount; runningCounter++) {
+          if (series[runningCounter] == null) {
+            // insert a new series
+            series.push({
+              name: runningCounter,
+              data: []
+            })
+          }          
+          series[runningCounter].data.push({ y: 0, color: (item.acstatus === "ON" ? "#98fb98" : "#FF5733") });
+        }
+
+        // reset the variables for next date processing
+        dateLabel = item.date;
+        categories.push(dateLabel);
+        runningCounter = 0;
+        lastETime=0;
+        // TODO for completeness we should even handle the last data block that is not having endtime equal to end of day time        
+        // check if the time needs to be filled 
+        if(startTimeSeconds > 0) {          
+          lastETime = adjustedStartTime - (startTimeSeconds);          
+        } else{
+          lastETime = adjustedStartTime;
+        }       
+
+      } else {
+        runningCounter++;
+      }
+      if (series[runningCounter] == null) {
+        // insert a new series
+        series.push({
+          name: runningCounter,         
+          data: []
+        })        
+      }
+      if(adjustedStartTime - lastETime > 1){
+        // TODO handle the scenario where the maxDateLabel which creates the largest number of time block is missing some data.
+        // then it needs to be added across all the other ones.
+        // may be it is a good idea to process it earlier and get count or may be fix the count logic
+        // we do not what this is        
+        series[runningCounter].data.push({ y: (adjustedStartTime - lastETime) * 1000, color: "gray"});        
+        runningCounter++;
+        // adding the additional counter for the regular block
+        series.push({
+          name: runningCounter,          
+          data: []
+        })
+        lastETime = adjustedStartTime;
+      }
+      series[runningCounter].data.push({ y: (adjustedEndTime - adjustedStartTime) * 1000, color: (item.acstatus === "ON" ? "#98fb98" : "#FF5733") });
+      lastETime = adjustedEndTime;
+    });
+    setTableData(filteredData);
+    console.log(JSON.stringify(series));
 
     setChartOptions({
       chart: {
-        type: 'columnrange',
-        inverted: false
+        type: 'column'
       },
       title: {
-        text: 'AC On/Off Times'
+        text: 'AC On Off Times',
+        align: 'left'
       },
       xAxis: {
-        categories: categories,
-        title: {
-          text: 'Date'
-        },
-        labels: {
-          formatter: function () {
-            // Assume categories contain date strings in 'YYYY-MM-DD' format
-            const date = moment(this.value, 'YYYY-MM-DD');
-            return date.format('DD-MM'); // Display as 'DD-MM'
-          }
-        }
+        categories: categories
       },
       yAxis: {
+
         type: 'datetime',
         title: {
           text: 'Time'
@@ -97,34 +145,34 @@ const AcStatus = ({ data, closeModal, id }) => {
           format: '{value:%H:%M:%S}'
         },
         min: 0,
-        max: 24 * 3600 * 1000 // 24 hours in milliseconds
+        max: 24 * 3600 * 1000,
+        stackLabels: {
+          enabled: false
+        },
+        reversedStacks: false
       },
-      series: [{
-        name: 'AC On/Off Duration',
-        data: acIntervals,
-        tooltip: {
-          pointFormatter: function () {
-            const start = Highcharts.dateFormat('%H:%M:%S', this.low);
-            const end = Highcharts.dateFormat('%H:%M:%S', this.high);
-            return `<b>${categories[this.x]}</b><br/>Start: ${start}<br/>End: ${end}`;
-          }
-        }
-      }],
+
+      legend: {
+        enabled: false
+      },
       tooltip: {
-        formatter: function () {
-          return this.series.tooltipOptions.pointFormatter.call(this.point);
+        headerFormat: '<b>{point.x}</b><br/>',
+        pointFormat: '{series.name}: {point.y}<br/>Total: {point.stackTotal}'
+      },
+      plotOptions: {
+        column: {
+          stacking: 'normal',
+          dataLabels: {
+            enabled: false
+          },
+          pointPadding: 0,
         }
       },
-      credits: {
-        enabled: false // Disable the watermark
-      }
-    });
+      series: series
+    })
   }, [data, id]);
 
-  function handleclick() {
-    setTableData([]);
-    closeModal();
-  }
+
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -218,239 +266,95 @@ const AcStatus = ({ data, closeModal, id }) => {
   const endIndex = startIndex + itemsPerPage;
   const displayedData = tableData.slice(startIndex, endIndex);
 
-  if(closeModal ){
-  return (
-    <div
-      style={{ maxHeight: "auto", overflowY: "auto" }}
-      className="fixed inset-0 z-30 flex items-end bg-black bg-opacity-50 sm:items-center sm:justify-center"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full px-6 py-4 overflow-hidden bg-white rounded-t-lg dark:bg-gray-800 xl:rounded-lg xl:m-4 xl:max-w-xl"
-        style={{ height: '100%' }}
-      >
-        <div className="flex justify-end mb-2">
-          <button
-            className="inline-flex items-center justify-center w-6 h-6 text-gray-400 transition-colors duration-150 rounded dark:hover:text-gray-200 hover:text-gray-700"
-            aria-label="close"
-            onClick={handleclick}
-          >
-            <svg
-              className="w-4 h-4"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              role="img"
-              aria-hidden="true"
-            >
-              <path
-                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                clipRule="evenodd"
-                fillRule="evenodd"
-              ></path>
-            </svg>
-          </button>
-        </div>
+
+    return (
+      <div className="container mt-4">
+        {/* <h4 className="text-center mb-3">AC ON/OFF Details</h4> */}
         <div className="container mt-4">
-          {/* <h4 className="text-center mb-3">AC ON/OFF Details</h4> */}
-          <div className="col-md-6 mb-4 mx-auto">
-            <div className="row">
-              <div className="col-md-4">
-                <div className="card" style={{ background: '#dafedf', padding: '0!important' }}>
-                  <div className="card-body" style={{ padding: '0 2px!important' }}>
-                    <h6 className="text-dark">Optimizer Id</h6>
-                    <p className="">{FilteredData[0]?._id}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-4">
-                <div className="card" style={{ background: '#fce7ef', padding: '0!important' }}>
-                  <div className="card-body" style={{ padding: '0 2px!important' }}>
-                    <h6 className="text-dark">Optimizer Name</h6>
-                    <p className="">{FilteredData[0]?.OptimizerName}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="col-md-4">
-                <div className="card" style={{ background: '#e7f0f8', padding: '0!important' }}>
-                  <div className="card-body" style={{ padding: '0 2px!important' }}>
-                    <h6 className="text-dark">AC Tonage</h6>
-                    <p className="">{FilteredData[0]?.ACTonnage}</p>
-                  </div>
-                </div>
-              </div>
+          <div className="row">
+            <div className="col-md-6">
+              <HighchartsReact
+                highcharts={Highcharts}
+                options={chartOptions}
+              />
             </div>
-          </div>
-          <div className="container mt-4">
-            <div className="row">
-              <div className="col-md-6">
-                <HighchartsReact
-                  highcharts={Highcharts}
-                  options={chartOptions}
-                />
-              </div>
-              <div className="col-md-5">
-                <table className="table mt-0">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>Date</th>
-                      <th scope="col">AC On Times</th>
-                      <th scope="col">AC Off Times</th>
+            <div className="col-md-5">
+              <table className="table mt-0">
+                <thead className="table-dark">
+                  <tr>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th scope="col">AC On Times</th>
+                    <th scope="col">AC Off Times</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {displayedData.map((item, index) => (
+                    <tr key={index}>
+                      <td>{moment.unix(item.starttime ? item.starttime : item.endtime).tz('Asia/Kolkata').format('YYYY-MM-DD')}</td>
+                      <td>{item.acstatus}</td>
+                      <td>{item.starttime ? new Date(item.starttime * 1000).toLocaleTimeString() : '--'}</td>
+                      <td>{item.endtime ? new Date(item.endtime * 1000).toLocaleTimeString() : '--'}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {displayedData.map((item, index) => (
-                      <tr key={index}>
-                        <td>{moment.unix(item.ACOnTime ? item.ACOnTime : item.ACOffTime).tz('Asia/Kolkata').format('YYYY-MM-DD')}</td>
-                        <td>{item.ACOnTime ? new Date(item.ACOnTime * 1000).toLocaleTimeString() : '--'}</td>
-                        <td>{item.ACOffTime ? new Date(item.ACOffTime * 1000).toLocaleTimeString() : '--'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {/* Pagination */}
-                <div className="grid px-0 py-0 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
-                  <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
-                    <nav aria-label="Table navigation">
-                      <ul className="inline-flex items-center">
-                        <li>
-                          <button
-                            className="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-purple"
-                            aria-label="Previous"
-                            disabled={currentPage === 1}
-                            onClick={() => handlePageChange(currentPage - 1)}
+                  ))}
+                </tbody>
+              </table>
+              {/* Pagination */}
+              <div className="grid px-0 py-0 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
+                <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
+                  <nav aria-label="Table navigation">
+                    <ul className="inline-flex items-center">
+                      <li>
+                        <button
+                          className="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-purple"
+                          aria-label="Previous"
+                          disabled={currentPage === 1}
+                          onClick={() => handlePageChange(currentPage - 1)}
+                        >
+                          <svg
+                            aria-hidden="true"
+                            className="w-4 h-4 fill-current"
+                            viewBox="0 0 20 20"
                           >
-                            <svg
-                              aria-hidden="true"
-                              className="w-4 h-4 fill-current"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
-                        {renderPaginationButtons()}
-                        <li>
-                          <button
-                            className="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-purple"
-                            aria-label="Next"
-                            disabled={currentPage === Math.ceil(tableData.length / itemsPerPage)}
-                            onClick={() => handlePageChange(currentPage + 1)}
+                            <path
+                              d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            ></path>
+                          </svg>
+                        </button>
+                      </li>
+                      {renderPaginationButtons()}
+                      <li>
+                        <button
+                          className="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-purple"
+                          aria-label="Next"
+                          disabled={currentPage === Math.ceil(tableData.length / itemsPerPage)}
+                          onClick={() => handlePageChange(currentPage + 1)}
+                        >
+                          <svg
+                            className="w-4 h-4 fill-current"
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
                           >
-                            <svg
-                              className="w-4 h-4 fill-current"
-                              aria-hidden="true"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
-                      </ul>
-                    </nav>
-                  </span>
-                </div>
+                            <path
+                              d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                              clipRule="evenodd"
+                              fillRule="evenodd"
+                            ></path>
+                          </svg>
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </span>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}else{
-  return(
-  <div className="container mt-4">
-          {/* <h4 className="text-center mb-3">AC ON/OFF Details</h4> */}
-           <div className="container mt-4">
-            <div className="row">
-              <div className="col-md-6">
-                <HighchartsReact
-                  highcharts={Highcharts}
-                  options={chartOptions}
-                />
-              </div>
-              <div className="col-md-5">
-                <table className="table mt-0">
-                  <thead className="table-dark">
-                    <tr>
-                      <th>Date</th>
-                      <th scope="col">AC On Times</th>
-                      <th scope="col">AC Off Times</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayedData.map((item, index) => (
-                      <tr key={index}>
-                        <td>{moment.unix(item.ACOnTime ? item.ACOnTime : item.ACOffTime).tz('Asia/Kolkata').format('YYYY-MM-DD')}</td>
-                        <td>{item.ACOnTime ? new Date(item.ACOnTime * 1000).toLocaleTimeString() : '--'}</td>
-                        <td>{item.ACOffTime ? new Date(item.ACOffTime * 1000).toLocaleTimeString() : '--'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {/* Pagination */}
-                <div className="grid px-0 py-0 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
-                  <span className="flex col-span-4 mt-2 sm:mt-auto sm:justify-end">
-                    <nav aria-label="Table navigation">
-                      <ul className="inline-flex items-center">
-                        <li>
-                          <button
-                            className="px-3 py-1 rounded-md rounded-l-lg focus:outline-none focus:shadow-outline-purple"
-                            aria-label="Previous"
-                            disabled={currentPage === 1}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                          >
-                            <svg
-                              aria-hidden="true"
-                              className="w-4 h-4 fill-current"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
-                        {renderPaginationButtons()}
-                        <li>
-                          <button
-                            className="px-3 py-1 rounded-md rounded-r-lg focus:outline-none focus:shadow-outline-purple"
-                            aria-label="Next"
-                            disabled={currentPage === Math.ceil(tableData.length / itemsPerPage)}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                          >
-                            <svg
-                              className="w-4 h-4 fill-current"
-                              aria-hidden="true"
-                              viewBox="0 0 20 20"
-                            >
-                              <path
-                                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                                clipRule="evenodd"
-                                fillRule="evenodd"
-                              ></path>
-                            </svg>
-                          </button>
-                        </li>
-                      </ul>
-                    </nav>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-  );
-}
+    );
+  
 };
 
 export default AcStatus;

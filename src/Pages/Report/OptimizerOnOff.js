@@ -7,7 +7,7 @@ import HighchartsMore from 'highcharts/highcharts-more'; // Import highcharts-mo
 import moment from 'moment-timezone';
 import Loader from "../../utils/Loader";
 import axios from "axios";
-import { TableGraph } from "../../Slices/ReportSlices";
+import { fetchOnOff } from "../../Slices/Enterprise/OptimizerOnOffSlice";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Tooltip } from 'bootstrap';
 import AcStatus from "../../Modals/AcStatus";
@@ -23,9 +23,7 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
   const [filteredOptimizer, setFilteredOptimizer] = useState('');
   const [uniqueOptimizers, setUniqueOptimizers] = useState([])
 
-  const { tableGraph_response,  loading1 } = useSelector(
-    (state) => state.reportSlice
-  );
+  const { aconoff,  loading1 } = useSelector((state) => state.aconoffslice);
   const header = {
     headers: {
       Authorization: `Bearer ${window.localStorage.getItem("token")}`,
@@ -129,7 +127,7 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
   const tooltipRef = useRef([]);
 
   const getTooltipTitle = (optimizerID) => {
-    const optimizerData = tableGraph_response.data.find((row) => row._id === optimizerID);
+    const optimizerData = aconoff.find((row) => row._id === optimizerID);
 
     if (optimizerData) {
       return `Optimizer Name: ${optimizerData.OptimizerName}\nAC Tonnage: ${optimizerData.ACTonnage}`;
@@ -148,22 +146,13 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    return `${hours} hrs: ${minutes} min: ${seconds} sec`;
+    return `${hours} hrs ${minutes} min`;
   };
 
   // Function to convert Unix timestamp to formatted date string in IST
   const convertUnixToFormattedDate = (unixTimestamp) => {
     const date = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
-    return date.toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      timeZone: "Asia/Kolkata", // Set time zone to IST
-    });
+    return moment(date).format('HH:mm:SS')
   };
   // End Id's
 
@@ -251,44 +240,47 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
     useEffect(() => {      
       if(userType == "optimizerOnOffData" && settingsComplete){
         console.log("optimizerOnOff reloading" + new Date());
-        async function tableData() {
-          const data = {
-            Interval: "Day",
-            startDate: pstartDate,
-            endDate: pendDate,
-            enterprise_id: selectedEnterprise,
-            state_id: selectedCountryState,
-            location_id: selectedLocation,
-            gateway_id: selectedGateway,
-            Optimizerid: selectedOptimizer,
-          };
-          dispatch(TableGraph({ data, header }));
-        }
-        tableData();
+        
+        const data = {
+          startDate: pstartDate,
+          endDate: pendDate,
+          gateway_id: selectedGateway,
+          Optimizerid: selectedOptimizer
+        };
+        dispatch(fetchOnOff({ data, header }));        
+        console.log("aconoff.length: " + aconoff.length)        
       }
-    }, [selectedEnterprise, selectedCountryState, selectedLocation, selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete ]);
+    }, [selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete ]);
 
     useEffect(() => {
-      if (tableGraph_response) {
-        setTableData(tableGraph_response.data);   
-
-        const uniqueOptimizers = Array.from(
-          tableGraph_response.data.reduce((map, item) => {
-            if (!map.has(item._id)) {
-              map.set(item._id, {id: item._id, optimizerName: item.OptimizerName, tonnage: item.ACTonnage});
-            }
-            return map;
-          }, new Map()).values()
-        );
-        setUniqueOptimizers(uniqueOptimizers);
-        // to draw the graph when the result comes for the first time        
-        if(!filteredOptimizer){
-          setFilteredOptimizer(uniqueOptimizers[0]);
-        }      
-        
+      // if (
+      //   optimizer_response &&
+      //   optimizer_response.AllEntStateLocationGatewayOptimizer
+      // ) {
+      //   setOptimizerList(optimizer_response.AllEntStateLocationGatewayOptimizer);
+  
+      //   dispatch(clearOptimizerResponse());
+      // }
+      if (aconoff.length> 0) {
+        setTableData(aconoff);
+        console.log(JSON.stringify(aconoff));
+          const uniqueOptimizers = Array.from(
+            aconoff.reduce((map, item) => {
+              if (!map.has(item._id)) {
+                map.set(item.optimizerId, {id: item.optimizerId, optimizerName: item.optimizerId, tonnage: item.optimizerId});
+              }
+              return map;
+            }, new Map()).values()
+          );
+          setUniqueOptimizers(uniqueOptimizers);
+          // to draw the graph when the result comes for the first time        
+          if(!filteredOptimizer){
+            setFilteredOptimizer(uniqueOptimizers[0]);
+          }
+          console.log(JSON.stringify(uniqueOptimizers));
       }
-      
-    }, [tableGraph_response]);
+    }, [aconoff]);
+  
 
     // data management - UI - End
 
@@ -378,55 +370,39 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
           </div>
         </div>
         <div>
-          <AcStatus data={tableData} id={filteredOptimizer.id}/>
+          <AcStatus data={tableData} id={filteredOptimizer.id}/> 
         </div>    
         <div className="min-w-0 p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
           <table className="w-full whitespace-wrap">
             <thead>
               <tr className="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
                 <th className="px-4 py-3">{selectedOption}</th>
-                <th className="px-4 py-3">OPTIMIZER ID</th>
-                <th className="px-4 py-3">Thermostat Cutoff (hrs)</th>
-                <th className="px-4 py-3">Device Cutoff (hrs)</th>
-                <th className="px-4 py-3">Remaning Runtime(hrs)</th>
+                <th className="px-4 py-3">Optimizer Id</th>
+                <th className="px-4 py-3">Start (hrs)</th>
+                <th className="px-4 py-3">End (hrs)</th>
                 <th className="px-4 py-3">Total Runtime(hrs)</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
               {displayedData.map((row, index) => (
 
-                <tr key={index} className="text-gray-700 dark:text-gray-400">
-                  {selectedOption === "Week" ? (
-                    <td className="px-4 py-3">
-                      {formatWeekRange(row.StartTime, row.EndTime)}
-                    </td>
-                  ) : (
-                    <td className="px-4 py-3">
-                      {formatDate(row.StartTime, selectedOption)}
-                    </td>
-                  )}
+                <tr key={index} className="text-gray-700 dark:text-gray-400">                  
+                  <td>{row.date}</td>
                  
                  <td
                       ref={(el) => (tooltipRef.current[index] = el)}
                       data-bs-original-title={getTooltipTitle(row._id)}
                       className="px-4 py-3 cursor-pointer"
-                    >{row._id}</td>
+                    >{row.optimizerId}</td>
 
                   <td className="px-4 py-3">
-                    {formatTime(row.totalCutoffTimeThrm)}
+                    {convertUnixToFormattedDate(row.starttime)}
                   </td>
                   <td className="px-4 py-3">
-                    {formatTime(row.totalCutoffTimeOpt)}
+                    {convertUnixToFormattedDate(row.endtime)}
                   </td>
                   <td className="px-4 py-3">
-                    {formatTime(row.totalRemainingTime)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {formatTime(
-                      row.totalRemainingTime +
-                      row.totalCutoffTimeOpt +
-                      row.totalCutoffTimeThrm
-                    )}
+                    {formatTime(row.duration)}
                   </td>
                 </tr>
               ))}

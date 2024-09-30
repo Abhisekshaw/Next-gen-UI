@@ -95,7 +95,7 @@ export const DELETE = (deleteData, header) => api.post(`/api/admin/delete/all`, 
 export const METERDATA = (Page, data, header) => api.post(`/api/admin/get/all/meter/data?page=${Page.page}&flag=${Page.flag}&PrevTimeStamp=${Page.PrevTimeStamp}&pageSize=100`, data, header);
 export const DEVICEDATA = (Page, data, header) => api.post(`/api/admin/get/all/device/data?page=${Page.page}&flag=${Page.flag}&PrevTimeStamp=${Page.PrevTimeStamp}pageSize=20`, data, header);
 export const TABLEGRAPH = (data, header) => api.post(`/api/admin/get/all/usage/trends`, data, header);
-
+export const ACONOFF = (data, header) => api.post(`/api/admin/get/all/acon/off`, data, header);
 
 // ACCUWEATHER
 export const WEATHER = (LocationKey) => weatherApi.get(`/currentconditions/v1/${LocationKey}?apikey=iV4ZAgc5DoSoc3EiDciIas8ePgSn7lH5&details=true`);
