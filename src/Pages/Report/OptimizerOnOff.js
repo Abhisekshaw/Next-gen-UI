@@ -1,34 +1,36 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from 'react';
 import { useSelector, useDispatch } from "react-redux";
+
+import Highcharts from 'highcharts';
+import HighchartsReact from 'highcharts-react-official';
+import HighchartsMore from 'highcharts/highcharts-more'; // Import highcharts-more module
+import moment from 'moment-timezone';
 import Loader from "../../utils/Loader";
-import Chart from "chart.js/auto";
 import axios from "axios";
-import AcStatus from "../../Modals/AcStatus";
-import {TableGraph} from "../../Slices/ReportSlices";
+import { fetchOnOff } from "../../Slices/Enterprise/OptimizerOnOffSlice";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Tooltip } from 'bootstrap';
+import AcStatus from "../../Modals/AcStatus";
 
 
-const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete }) => {
+HighchartsMore(Highcharts); // Initialize the highcharts-more module
+
+
+const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLocation, selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete }) => {
   const dispatch = useDispatch();
-  const [selectedRow, setSelectedRow] = useState(null);
-  //const [optimizerList, setOptimizerList] = useState([]);
   const [tableData, setTableData] = useState([]);
-  const [openModel, setOpenModel] = useState(false)
-  const [selectedOption, setSelectedOption] = useState("");
-  const [options, setOptions] = useState([]);
+  const [selectedOption, setSelectedOption] = useState("Day");
+  const [filteredOptimizer, setFilteredOptimizer] = useState('');
+  const [uniqueOptimizers, setUniqueOptimizers] = useState([])
 
-  
-  const { tableGraph_response,  loading1 } = useSelector(
-    (state) => state.reportSlice
-  );
+  const { aconoff,  loading1 } = useSelector((state) => state.aconoffslice);
   const header = {
     headers: {
       Authorization: `Bearer ${window.localStorage.getItem("token")}`,
     },
   };
 
-  //Pagination
+  // -------------handle Pagination Start-----------
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const paginationRange = 1;
@@ -60,7 +62,6 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
         </li>
       ));
     }
-
     const pages = [];
     const startPage = Math.max(1, currentPage - paginationRange);
     const endPage = Math.min(totalPages, startPage + 2 * paginationRange);
@@ -80,7 +81,6 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
         pages.push(<span key="startEllipsis">...</span>);
       }
     }
-
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <li key={i}>
@@ -96,7 +96,6 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
         </li>
       );
     }
-
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         pages.push(<span key="endEllipsis">...</span>);
@@ -121,11 +120,14 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
   const endIndex = startIndex + itemsPerPage;
   const displayedData = tableData.slice(startIndex, endIndex);
 
+  // -------------handle Pagination End-----------
+
+  // -------------handle Tooltip Start-----------
   //hovering
   const tooltipRef = useRef([]);
 
   const getTooltipTitle = (optimizerID) => {
-    const optimizerData = tableGraph_response.data.find((row) => row._id === optimizerID);
+    const optimizerData = aconoff.find((row) => row._id === optimizerID);
 
     if (optimizerData) {
       return `Optimizer Name: ${optimizerData.OptimizerName}\nAC Tonnage: ${optimizerData.ACTonnage}`;
@@ -133,206 +135,38 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
       return 'Default message: No additional message';
     }
   };
+ // -------------handle Tooltip End-----------
+
+
+
+  // handle table data Date Formatting - start
 
   // Function to format time into hrs:min:sec format
   const formatTime = (totalSeconds) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
-    return `${hours} hrs: ${minutes} min: ${seconds} sec`;
+    return `${hours} hrs ${minutes} min`;
   };
-
-  const parseDate = (dateString) => {
-    return new Date(dateString).getTime();
-  };
-
-  const startDate = parseDate(pstartDate);
-  const endDate = parseDate(pendDate);
-
-  
-  useEffect(() => {
-    const calculateDateDifference = () => {
-      const msInHour = 1000 * 60 * 60;
-      const msInDay = msInHour * 24;
-      const msInWeek = msInDay * 7;
-      const msInMonth = msInDay * 30; // Approximate month
-      const msInYear = msInDay * 365; // Approximate year
-
-      const diff = endDate - startDate;
-
-
-      if (diff < msInDay) {
-        return ["Hourly"];
-      } else if (diff <= msInWeek) {
-        return ["Day", "Week"];
-      } else if (diff <= msInMonth) {
-        return [ "Day", "Week", "Month"];
-      } else if (diff <= msInYear) {
-        return [ "Week", "Month", "Year"];
-      } else {
-        return [ "Week", "Month", "Year"];
-      }
-    };
-
-    const options = calculateDateDifference();
-    setOptions(options);
-  }, [startDate, endDate]);
-
-  const chartRef = useRef(null);
-
-  // Extracting data from tableData
-  useEffect(() => {
-    const labels = displayedData.map((row, index) => {
-      return selectedOption === "Week"
-        ? formatWeekRange(row.StartTime, row.EndTime)
-        : formatDate(row.StartTime, selectedOption);
-    });
-
-    const thermostatCutoffData = displayedData.map(
-      (row) => row.totalCutoffTimeThrm
-    );
-    const deviceCutoffData = displayedData.map((row) => row.totalCutoffTimeOpt);
-    const totalRuntimeSumData = displayedData.map(
-      (row) =>
-        row.totalRemainingTime +
-        row.totalCutoffTimeOpt +
-        row.totalCutoffTimeThrm
-    );
-
-    const myChart = new Chart(chartRef.current, {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [
-          {
-            label: "Thermostat Cutoff(time)",
-            backgroundColor: "purple",
-            data: thermostatCutoffData,
-            borderWidth: 1,
-          },
-          {
-            label: "Device Cutoff(time)",
-            backgroundColor: "brown",
-            data: deviceCutoffData,
-            borderWidth: 1,
-          },
-          {
-            label: "Total Runtime",
-            backgroundColor: "#0694a2",
-            data: totalRuntimeSumData,
-            borderWidth: 1,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: {
-              callback: function (value, index, values) {
-                const hours = Math.floor(value / 3600);
-                return `${hours}h`;
-              },
-            },
-            title: {
-              display: true,
-              text: "Time (hours)",
-            },
-          },
-        },
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: function (context) {
-                let label = context.dataset.label || "";
-                if (label) {
-                  label += ": ";
-                }
-                label += formatTime(context.raw);
-                return label;
-              },
-            },
-          },
-        },
-      },
-    });
-
-    // Cleanup function to destroy the chart when the component unmounts
-    return () => myChart.destroy();
-  }, [displayedData]);
-
-  const handleFormChange4 = (e) => {
-    const { name, value } = e.target;
-    // Check if selectedEnterprise is not undefined before accessing its properties
-  };
-
-
-  // Table, Graph Data
-  useEffect(() => {
-    if(userType == "usageTrend" && settingsComplete && selectedOption != ""){
-      console.log("UsageTrend reloading" + new Date());
-      async function tableData() {
-        const data = {
-          Interval: selectedOption,
-          startDate: pstartDate,
-          endDate: pendDate,
-          enterprise_id: selectedEnterprise,
-          state_id: selectedCountryState,
-          location_id: selectedLocation,
-          gateway_id: selectedGateway,
-          Optimizerid: selectedOptimizer,
-        };
-        dispatch(TableGraph({ data, header }));
-      }
-      tableData();
-    }
-  }, [selectedOption, selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete]);
 
   // Function to convert Unix timestamp to formatted date string in IST
   const convertUnixToFormattedDate = (unixTimestamp) => {
     const date = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
-    return date.toLocaleString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      timeZone: "Asia/Kolkata", // Set time zone to IST
-    });
+    return moment(date).format('HH:mm:SS')
   };
   // End Id's
-  useEffect(() => {
-    // if (
-    //   optimizer_response &&
-    //   optimizer_response.AllEntStateLocationGatewayOptimizer
-    // ) {
-    //   setOptimizerList(optimizer_response.AllEntStateLocationGatewayOptimizer);
 
-    //   dispatch(clearOptimizerResponse());
-    // }
-    if (tableGraph_response) {
-      setTableData(tableGraph_response.data);
-
-    }
-  }, [tableGraph_response]);
 
   // Function to format dates based on selected option
   const formatDate = (dateString, option) => {
-
     const startString = convertUnixToFormattedDate(dateString);
-
     if (typeof dateString !== 'string') {
       return dateString; // Return as is if it's not a string
     }
-
     const dateParts = startString.split(", ");
     if (dateParts.length < 3) {
       return startString; // Handle incorrect date format
     }
-
     const day = dateParts[1].split(" ")[1].slice(0, 2); // Remove the last character
     const month = dateParts[1].split(" ")[0];
     const year = dateParts[2].split(" ")[0];
@@ -344,7 +178,6 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
     } else if (option === "Year") {
       return year;
     }
-
     return dateString;
   };
 
@@ -353,30 +186,24 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
     // Convert Unix timestamps to formatted date strings
     const startString = convertUnixToFormattedDate(startTimestamp);
     const endString = convertUnixToFormattedDate(endTimestamp);
-
-
-
     // Handle undefined date strings
     if (!startString || !endString) return "";
-
     // Split the date strings into parts
     const startDateParts = startString.split(", ");
     const endDateParts = endString.split(", ");
-
     // Handle incorrect date format
     if (startDateParts.length < 3 || endDateParts.length < 3) return "";
-
     // Extract day and month from start and end dates
     const startDay = startDateParts[1].split(" ")[1]?.slice(0, 2);
     const startMonth = startDateParts[1].split(" ")[0];
     const endDay = endDateParts[1].split(" ")[1]?.slice(0, 2);
     const endMonth = endDateParts[1].split(" ")[0];
-
-
-
     // Return the formatted date range
     return `${startDay} ${startMonth}-${endDay} ${endMonth}`;
   };
+
+  // handle table data Date Formatting - End
+
   //Download CSV
   const downloadFile = async (url, requestBody, defaultFilename) => {
     try {
@@ -398,64 +225,88 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
     } catch (error) { }
   };
 
-  const handleDownloadUsageTrendsData = async () => {
-        
-    const requestBody = { 
-      enterprise_id: selectedEnterprise,
-      state_id: selectedCountryState,
-      location_id: selectedLocation,
-      gateway_id: selectedGateway,
-      Optimizerid: selectedOptimizer,
-      startDate: pstartDate,
-      endDate: pendDate, 
-      Interval: selectedOption };
+  const handleDownloadOnOffData = async () => {
+    // const requestBody = { ...Data, Interval: selectedOption };
+    // await downloadFile(
+    //   `${process.env.REACT_APP_API}/api/admin/download/all/usagetrend/report`,
+    //   requestBody,
+    //   `DeviceDataReport_${new Date().toLocaleString("en-US", {
+    //     timeZone: "Asia/Kolkata",
+    //   })}.csv`
+    // );
+  };
 
-    await downloadFile(
-      `${process.env.REACT_APP_API}/api/admin/download/all/usagetrend/report`,
-      requestBody,
-      `UsageTrendReport_${new Date().toLocaleString("en-US", {
-        timeZone: "Asia/Kolkata",
-      })}.csv`
-    );
-  };
-  const handleRowClick = (row, index) => {
-    // const tooltipInstance = Tooltip.getInstance(tooltipRef.current[index]);
-    // if (tooltipInstance) {
-    //   tooltipInstance.hide();
-    // }
-    setSelectedRow(row._id);
-    setOpenModel(true);
-    // window.location.href = "/AcStatus";
-  };
-  const closeModal = () => {
-    setOpenModel(false);
-    setSelectedRow(null);
-  };
+    // data management - UI - Start
+    useEffect(() => {      
+      if(userType == "optimizerOnOffData" && settingsComplete){
+        console.log("optimizerOnOff reloading" + new Date());
+        
+        const data = {
+          startDate: pstartDate,
+          endDate: pendDate,
+          gateway_id: selectedGateway,
+          Optimizerid: selectedOptimizer
+        };
+        dispatch(fetchOnOff({ data, header }));        
+        console.log("aconoff.length: " + aconoff.length)        
+      }
+    }, [selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete ]);
+
+    useEffect(() => {
+      // if (
+      //   optimizer_response &&
+      //   optimizer_response.AllEntStateLocationGatewayOptimizer
+      // ) {
+      //   setOptimizerList(optimizer_response.AllEntStateLocationGatewayOptimizer);
+  
+      //   dispatch(clearOptimizerResponse());
+      // }
+      if (aconoff.length> 0) {
+        setTableData(aconoff);
+        console.log(JSON.stringify(aconoff));
+          const uniqueOptimizers = Array.from(
+            aconoff.reduce((map, item) => {
+              if (!map.has(item._id)) {
+                map.set(item.optimizerId, {id: item.optimizerId, optimizerName: item.optimizerId, tonnage: item.optimizerId});
+              }
+              return map;
+            }, new Map()).values()
+          );
+          setUniqueOptimizers(uniqueOptimizers);
+          // to draw the graph when the result comes for the first time        
+          if(!filteredOptimizer){
+            setFilteredOptimizer(uniqueOptimizers[0]);
+          }
+          console.log(JSON.stringify(uniqueOptimizers));
+      }
+    }, [aconoff]);
+  
+
+    // data management - UI - End
 
   return (
     <>
       {loading1 && <Loader />}
       <div role="tabpanel">
-        <div className="flex items-center">
+        <div className="w-full flex items-center">
           <div
             className="w-full flex justify-between items-center "
             style={{ marginLeft: "2%" }}
           >
-            <h4 className="classtitle mr-4">Interval</h4>
+            <h4 className="classtitle mr-4">Optimizers</h4>
             <select
               className="block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray"
-              value={selectedOption}
-              onChange={(e) => setSelectedOption(e.target.value)}
+              value={filteredOptimizer.id}
+              onChange={(e) => setFilteredOptimizer(uniqueOptimizers.find(uniqueOptimizers => uniqueOptimizers.id  === e.target.value))}
             >
               <option value="">Choose Interval</option>
-              {options.map((option, index) => (
-                <option key={index} value={option}>
-                  {option}
+              {uniqueOptimizers.map((option, index) => (
+                <option key={option.id} value={option.id}>
+                  {option.optimizerName }
                 </option>
               ))}
             </select>
           </div>
-
           <div
             className="download_btn"
             style={{
@@ -470,7 +321,7 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
             <button
               type="button"
               className="py-2 px-3 mt-2 focus:outline-none text-white rounded-lg   "
-              onClick={handleDownloadUsageTrendsData}
+              onClick={handleDownloadOnOffData}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -488,88 +339,75 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
             </button>
           </div>
         </div>
-
-        <div
-          className="grid gap-6 mb-8 "
-          style={{ marginTop: "1%", marginLeft: "2%", marginRight: "2%" }}
-        >
-          <div className="min-w-0 p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
-            <h4 className="mb-4 font-semibold text-gray-800 dark:text-gray-300">
-              Energy Saving Trends
-            </h4>
-
-            <canvas ref={chartRef} id="myChart" style={{ maxHeight: "95%" }} />
+        <div>
+        <div className="w-full py-2 px-3 mb-4 mx-auto">
+            <div className="row">
+              <div className="col-md-4">
+                <div className="card" style={{ background: '#dafedf', padding: '0!important' }}>
+                  <div className="card-body" style={{ padding: '0 2px!important' }}>
+                    <h6 className="text-dark">Optimizer Id</h6>
+                    <p className="">{filteredOptimizer?.id}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="card" style={{ background: '#fce7ef', padding: '0!important' }}>
+                  <div className="card-body" style={{ padding: '0 2px!important' }}>
+                    <h6 className="text-dark">Optimizer Name</h6>
+                    <p className="">{filteredOptimizer?.optimizerName}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="col-md-4">
+                <div className="card" style={{ background: '#e7f0f8', padding: '0!important' }}>
+                  <div className="card-body" style={{ padding: '0 2px!important' }}>
+                    <h6 className="text-dark">AC Tonage</h6>
+                    <p className="">{filteredOptimizer?.tonnage}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
+        <div>
+          <AcStatus data={tableData} id={filteredOptimizer.id}/> 
+        </div>    
         <div className="min-w-0 p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
           <table className="w-full whitespace-wrap">
             <thead>
               <tr className="text-xs font-semibold tracking-wide text-left text-gray-500 uppercase border-b dark:border-gray-700 bg-gray-50 dark:text-gray-400 dark:bg-gray-800">
                 <th className="px-4 py-3">{selectedOption}</th>
-                <th className="px-4 py-3">OPTIMIZER ID</th>
-                <th className="px-4 py-3">Thermostat Cutoff (hrs)</th>
-                <th className="px-4 py-3">Device Cutoff (hrs)</th>
-                <th className="px-4 py-3">Remaning Runtime(hrs)</th>
+                <th className="px-4 py-3">Optimizer Id</th>
+                <th className="px-4 py-3">Start (hrs)</th>
+                <th className="px-4 py-3">End (hrs)</th>
                 <th className="px-4 py-3">Total Runtime(hrs)</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y dark:divide-gray-700 dark:bg-gray-800">
               {displayedData.map((row, index) => (
-                <tr key={index} className="text-gray-700 dark:text-gray-400">
-                  {selectedOption === "Week" ? (
-                    <td className="px-4 py-3">
-                      {formatWeekRange(row.StartTime, row.EndTime)}
-                    </td>
-                  ) : (
-                    <td className="px-4 py-3">
-                      {formatDate(row.StartTime, selectedOption)}
-                    </td>
-                  )}
-                 
-                  {selectedOption === "Day" ? (
-                    <td
-                      className="px-4 py-3 cursor-pointer"
-                      onClick={() => handleRowClick(row, index)}
 
-                    >
-                      {row._id}{openModel && (<AcStatus
-                        data={tableData}
-                        id={selectedRow}
-                        closeModal={() => closeModal()}
-                      />)}
-                    </td>
-                  ) : (
-                    <td
+                <tr key={index} className="text-gray-700 dark:text-gray-400">                  
+                  <td>{row.date}</td>
+                 
+                 <td
                       ref={(el) => (tooltipRef.current[index] = el)}
                       data-bs-original-title={getTooltipTitle(row._id)}
                       className="px-4 py-3 cursor-pointer"
-                    >
-                      {row._id}
-                    </td>
-                  )}
+                    >{row.optimizerId}</td>
+
                   <td className="px-4 py-3">
-                    {formatTime(row.totalCutoffTimeThrm)}
+                    {convertUnixToFormattedDate(row.starttime)}
                   </td>
                   <td className="px-4 py-3">
-                    {formatTime(row.totalCutoffTimeOpt)}
+                    {convertUnixToFormattedDate(row.endtime)}
                   </td>
                   <td className="px-4 py-3">
-                    {formatTime(row.totalRemainingTime)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {formatTime(
-                      row.totalRemainingTime +
-                      row.totalCutoffTimeOpt +
-                      row.totalCutoffTimeThrm
-                    )}
+                    {formatTime(row.duration)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-
-
           <div className="grid px-4 py-3 text-xs font-semibold tracking-wide text-gray-500 uppercase border-t dark:border-gray-700 bg-gray-50 sm:grid-cols-9 dark:text-gray-400 dark:bg-gray-800">
             <span className="flex items-center col-span-3">
               {`Showing ${startIndex + 1}-${endIndex} of ${tableData.length}`}
@@ -626,8 +464,10 @@ const UsageTrends = ({selectedEnterprise,selectedCountryState,selectedLocation,s
             </span>
           </div>
         </div>
+        
       </div>
     </>
   );
 };
-export default UsageTrends;
+
+export default OptimizerOnOff;

@@ -24,6 +24,7 @@
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.1",
     "chartjs-adapter-date-fns": "^3.0.0",
+    "dashboard": "file:",
     "date-fns": "^3.3.1",
     "daterangepicker": "^3.1.0",
     "highcharts": "^11.4.6",

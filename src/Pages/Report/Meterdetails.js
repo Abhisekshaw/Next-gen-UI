@@ -5,15 +5,13 @@ import { useEffect } from "react";
 import axios from "axios";
 import Loader from "../../utils/Loader";
 
-const Meterdetails = (Data) => {
+const Meterdetails = ({selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, settingsComplete}) => {
   const dispatch = useDispatch();
   const [page, setPage] = useState("");
   const [reportData, setReportData] = useState([]);
   const { meterData_response, meterData_error, loading1 } = useSelector(
     (state) => state.reportSlice
   );
-  // console.log(meterData_response);
-
   const [timeStamp, setTimeStamp] = useState({
     first: "",
     last: "",
@@ -59,7 +57,7 @@ const Meterdetails = (Data) => {
   // Change: Reset currentPage to 1 when Data prop changes
   useEffect(() => {
     setCurrentPage({ page: 1, flag: '', PrevTimeStamp: '' });
-  }, [Data, selectedOption, intervalInSeconds]);
+  }, [selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, selectedOption, intervalInSeconds]);
 
   // Array of options
   const options = Object.keys(optionIntervals);
@@ -74,8 +72,7 @@ const Meterdetails = (Data) => {
         page: meterData_response.pageReset ? 2 : Math.max(prevPage.page + 1, 1),
         flag: 'Next',
         PrevTimeStamp: ''
-      };
-      console.log('New Page:', newPage.page); // Adding console.log statement
+      };      
       return newPage;
     });
     // for first and last timestamp
@@ -111,8 +108,7 @@ const Meterdetails = (Data) => {
         page: meterData_response.pageReset ? 2 : Math.max(prevPage.page - 1, 1),
         flag: 'Prev',
         PrevTimeStamp: TimeStamp // Assuming TimeStamp is a variable holding the timestamp value
-      };
-      console.log('New Page:', newPage.page); // Adding console.log statement
+      };      
       return newPage;
     });
     // for first and last timestamp
@@ -130,7 +126,7 @@ const Meterdetails = (Data) => {
       first: values[0],
       last: values[values.length - 1],
     })
-    console.log({ F: values[0], L: values[values.length - 1] });
+
   }
 
   function filterByInterval(array, interval) {
@@ -147,18 +143,25 @@ const Meterdetails = (Data) => {
     return timestamp;
   }
 
-  useEffect(() => {
-
-    const Page = currentPage;
-    const data = {
-      ...Data.Data,
-      Interval: intervalInSeconds,
-      FirstRef: timeStamp?.first,
-      LastRef: timeStamp?.last,
-      current_interval: meterData_response?.current_interval,
-    };
-    dispatch(MeterData({ Page, data, header }));
-  }, [currentPage, Data]);
+  useEffect(() => {    
+    if(settingsComplete){
+      console.log("Meter reloading" + new Date());
+      const Page = currentPage;
+      const data = {
+        Customer: selectedEnterprise,
+        Stateid: selectedCountryState,
+        Locationid: selectedLocation,
+        Gatewayid: selectedGateway,
+        startDate: pstartDate,
+        endDate: pendDate,
+        Interval: intervalInSeconds,
+        FirstRef: timeStamp?.first,
+        LastRef: timeStamp?.last,
+        current_interval: meterData_response?.current_interval,
+      };
+      dispatch(MeterData({ Page, data, header }));
+    }
+  }, [currentPage, selectedEnterprise,selectedCountryState,selectedLocation,selectedGateway, pstartDate, pendDate, settingsComplete]);
 
   useEffect(() => {
     if (meterData_response) {
@@ -446,9 +449,16 @@ const Meterdetails = (Data) => {
       document.body.removeChild(a);
     } catch (error) { }
   };
-  const handleDownloadMeterData = () => {
-    const requestBody = { ...Data.Data, Interval: intervalInSeconds };
 
+  const handleDownloadMeterData = () => {
+    const requestBody = { 
+      Customer: selectedEnterprise,
+      Stateid: selectedCountryState,
+      Locationid: selectedLocation,
+      Gatewayid: selectedGateway,
+      startDate: pstartDate,
+      endDate: pendDate, 
+      Interval: intervalInSeconds };
     downloadFile(
       `${process.env.REACT_APP_API}/api/admin/download/all/meterdata/report`,
       requestBody,
