@@ -7,13 +7,8 @@ import {
 export const fetchOnOff = createAsyncThunk(
   "OptimizerOnOff",
   async ({ data, header }, { getState }) => {
-    // const aconoff = getState().aconoffslice.aconoff;
-    // if(aconoff.length > 0){
-    //   return aconoff;
-    // }
+  
     const response = await ACONOFF(data, header);
-    // process and aggregates counts    
-    //console.log(JSON.stringify(response.data.data));
     return response.data.data;
   }
 );
@@ -26,6 +21,9 @@ const ACOnOffSlice = createSlice({
     error: null,
   },
   reducers: {    
+    clearGatewaysResponse: (state) => {
+      state.aconoff = [];
+    }
   },
   extraReducers: (builder) => {
     builder
@@ -44,6 +42,6 @@ const ACOnOffSlice = createSlice({
   },
 });
 
-export const {} = ACOnOffSlice.actions;
+export const {clearGatewaysResponse} = ACOnOffSlice.actions;
 
 export default ACOnOffSlice.reducer;

@@ -6,8 +6,9 @@ import HighchartsMore from 'highcharts/highcharts-more'; // Import highcharts-mo
 import HighchartsXrange from 'highcharts/modules/xrange';
 import moment from 'moment-timezone';
 
-//HighchartsMore(Highcharts); // Initialize the highcharts-more module
-//HighchartsXrange(Highcharts);
+// HighchartsMore(Highcharts); 
+// Initialize the highcharts-more module
+// HighchartsXrange(Highcharts);
 
 function findMaxCount(filteredData) {
   // do an initial count of the day with max events
@@ -158,8 +159,7 @@ const AcStatus = ({ data, closeModal, id }) => {
     day3: added additional 3(nostatus) to fill the gap in the middle, and 0 event to match counts
   */
   useEffect(() => {
-    let filteredData = id ? data.filter(element => element.optimizerId === id) : data;
-
+    let filteredData = id ? data.filter(element => element.optimizerId === id) : [];
     setFilteredData(filteredData);
 
     // find the dateWith the maxCounter
@@ -334,7 +334,7 @@ const AcStatus = ({ data, closeModal, id }) => {
   const displayedData = tableData.slice(startIndex, endIndex);
 
 
-  return (
+  return (id === ""? "": (
     <div className="container mt-4">
       {/* <h4 className="text-center mb-3">AC ON/OFF Details</h4> */}
       <div className="container mt-4">
@@ -420,7 +420,7 @@ const AcStatus = ({ data, closeModal, id }) => {
         </div>
       </div>
     </div>
-  );
+  ))
 
 };
 
