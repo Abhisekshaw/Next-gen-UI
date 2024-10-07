@@ -57,7 +57,7 @@ function Reports() {
     // meterData usageTrend deviceData    
     setErrors(newErrors);
     if ((newErrors.country || newErrors.state || newErrors.location || newErrors.gateway || newErrors.endDate || newErrors.startDate)) {
-      newErrors.message = "Country, State, Location, Gateway, Date is required. Did you forget to apply the dates"
+      newErrors.message = "Customer, State, Location, Gateway, Date is required. Did you forget to apply the dates"
     }
 
     if (!newErrors.message) {
