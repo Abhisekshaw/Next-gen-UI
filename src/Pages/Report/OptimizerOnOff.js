@@ -7,11 +7,11 @@ import HighchartsMore from 'highcharts/highcharts-more'; // Import highcharts-mo
 import moment from 'moment-timezone';
 import Loader from "../../utils/Loader";
 import axios from "axios";
-import { fetchOnOff } from "../../Slices/Enterprise/OptimizerOnOffSlice";
+import { fetchOnOff, clearGatewaysResponse} from "../../Slices/Enterprise/OptimizerOnOffSlice";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import { Tooltip } from 'bootstrap';
 import AcStatus from "../../Modals/AcStatus";
-
+import { fetchEnterprises } from "../../Slices/Enterprise/NewEnterpriseDataSlice";
 
 HighchartsMore(Highcharts); // Initialize the highcharts-more module
 
@@ -21,7 +21,9 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
   const [tableData, setTableData] = useState([]);
   const [selectedOption, setSelectedOption] = useState("Day");
   const [filteredOptimizer, setFilteredOptimizer] = useState('');
-  const [uniqueOptimizers, setUniqueOptimizers] = useState([])
+  const [uniqueOptimizers, setUniqueOptimizers] = useState([]);
+
+  const { enterprises, loading, error } = useSelector(state => state.enterpriseDataSlice);
 
   const { aconoff,  loading1 } = useSelector((state) => state.aconoffslice);
   const header = {
@@ -29,6 +31,9 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
       Authorization: `Bearer ${window.localStorage.getItem("token")}`,
     },
   };
+  useEffect(() => {
+    dispatch(fetchEnterprises({header})); // Dispatch the async thunk when the component mounts
+  }, dispatch);
 
   // -------------handle Pagination Start-----------
   const [currentPage, setCurrentPage] = useState(1);
@@ -239,35 +244,42 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
     // data management - UI - Start
     useEffect(() => {      
       if(userType == "optimizerOnOffData" && settingsComplete){
-        console.log("optimizerOnOff reloading" + new Date());
-        
+    
         const data = {
           startDate: pstartDate,
           endDate: pendDate,
           gateway_id: selectedGateway,
           Optimizerid: selectedOptimizer
         };
-        dispatch(fetchOnOff({ data, header }));        
-        console.log("aconoff.length: " + aconoff.length)        
+        dispatch(fetchOnOff({ data, header }));
+ 
       }
     }, [selectedGateway, selectedOptimizer, pstartDate, pendDate, userType, settingsComplete ]);
 
+
+
+    // whe
     useEffect(() => {
-      // if (
-      //   optimizer_response &&
-      //   optimizer_response.AllEntStateLocationGatewayOptimizer
-      // ) {
-      //   setOptimizerList(optimizer_response.AllEntStateLocationGatewayOptimizer);
+      if (!settingsComplete & aconoff.length > 0) {        
+        clearGatewaysResponse();
+        setUniqueOptimizers([]);
+        setFilteredOptimizer('');
+        setTableData([]);
+      }else if(settingsComplete) {
+        // do nothing       
+      }
+    }, [settingsComplete]);
   
-      //   dispatch(clearOptimizerResponse());
-      // }
-      if (aconoff.length> 0) {
+    useEffect(() => {
+      if(aconoff.length > 0){
+        console.log("aconoff.length: " + aconoff.length);        
         setTableData(aconoff);
         console.log(JSON.stringify(aconoff));
           const uniqueOptimizers = Array.from(
             aconoff.reduce((map, item) => {
               if (!map.has(item._id)) {
-                map.set(item.optimizerId, {id: item.optimizerId, optimizerName: item.optimizerId, tonnage: item.optimizerId});
+                const optimizerDetails = findOptimizerDetails(item.optimizerId)
+                map.set(item.optimizerId, {id: optimizerDetails.id, optimizerName: optimizerDetails.name, tonnage: ""});
               }
               return map;
             }, new Map()).values()
@@ -279,10 +291,25 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
           }
           console.log(JSON.stringify(uniqueOptimizers));
       }
-    }, [aconoff]);
-  
+    },[aconoff]);
 
     // data management - UI - End
+
+    // optimizer data functions
+    // show other details of optimizer
+    const findOptimizerDetails = (optimizerId) => {
+      const selectedEnterpriseData = enterprises.find(enterprise => enterprise.entepriseId  === selectedEnterprise);
+      const countrystates = selectedEnterpriseData ? selectedEnterpriseData.states : [];
+      const selectedCountryStateData = countrystates.find(countrystate => countrystate.stateId === selectedCountryState);
+      const locations = selectedCountryStateData ? selectedCountryStateData.locations : [];
+      const selectedLocationData = locations.find(location => location.locId === selectedLocation);
+      const gateways = selectedLocationData ? selectedLocationData.gateways : [];
+      const selectedGatewayData = gateways.find(gateway => gateway._id === selectedGateway);
+      const optimizers = selectedGatewayData ? selectedGatewayData.optimizers:[];
+      const opt = optimizers.find(optimizer => optimizer.id === optimizerId);
+      return opt;
+    } 
+
 
   return (
     <>
@@ -296,7 +323,7 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
             <h4 className="classtitle mr-4">Optimizers</h4>
             <select
               className="block w-full text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray"
-              value={filteredOptimizer.id}
+              value={filteredOptimizer? filteredOptimizer.id : ""}
               onChange={(e) => setFilteredOptimizer(uniqueOptimizers.find(uniqueOptimizers => uniqueOptimizers.id  === e.target.value))}
             >
               <option value="">Choose Interval</option>
@@ -370,7 +397,7 @@ const OptimizerOnOff = ({ selectedEnterprise, selectedCountryState, selectedLoca
           </div>
         </div>
         <div>
-          <AcStatus data={tableData} id={filteredOptimizer.id}/> 
+          <AcStatus data={tableData} id={filteredOptimizer? filteredOptimizer.id:""}/> 
         </div>    
         <div className="min-w-0 p-4 bg-white rounded-lg shadow-xs dark:bg-gray-800">
           <table className="w-full whitespace-wrap">
