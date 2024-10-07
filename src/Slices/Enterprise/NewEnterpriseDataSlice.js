@@ -1,8 +1,6 @@
 //import { configureStore, createSlice } from '@reduxjs/toolkit';
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import {
-  GETALLENTERPRISE
-} from "../../api/api";
+import { GETALLENTERPRISE } from "../../api/api";
 
 export const fetchEnterprises = createAsyncThunk(
   "GetAllEnterprise",
