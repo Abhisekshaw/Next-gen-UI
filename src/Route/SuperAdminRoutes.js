@@ -10,6 +10,7 @@ import Location from "../Pages/Enterprise/Location";
 import Optimizer from "../Pages/Enterprise/Optimizer";
 import OptimizerDetails from "../Pages/Enterprise/OptimizerDetails";
 import Settings from "../Pages/Settings/Settings";
+import ByPass from "../Pages/Settings/ByPass";
 import Dashboard from "../Pages/Dashboard";
 import MeterDetails from "../Pages/MeterDetails";
 import ProtectedRouteOne from "./protectedroute/ProtectedRouteOne";
@@ -37,6 +38,7 @@ function SuperAdminRoutes() {
           <Route path="/gatewaydetails" element={<MeterDetails />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/AcStatus" element={<AcStatus />} />
+          <Route path="/bypass" element={<ByPass/>} />
         </Route>
       </Routes>
     </Router>

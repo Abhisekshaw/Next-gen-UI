@@ -16,7 +16,7 @@ import "daterangepicker";
 
 
 
-function NewReports({selectedEnterprise, selectedCountryState, selectedLocation, selectedGateway, selectedOptimizer,  setSelectedEnterprise, setSelectedLocation, setSelectedCountryState, setSelectedGateway, setSelectedOptimizer, formDisabled }) {
+function NewReports({selectedEnterprise, selectedCountryState, selectedLocation, selectedGateway, selectedOptimizer,  setSelectedEnterprise, setSelectedLocation, setSelectedCountryState, setSelectedGateway, setSelectedOptimizer, formDisabled, hideOptimizer }) {
     const header = {
         headers: {
             Authorization: `Bearer ${window.localStorage.getItem("token")}`,
@@ -24,10 +24,9 @@ function NewReports({selectedEnterprise, selectedCountryState, selectedLocation,
         };
     const dispatch = useDispatch();
     const { enterprises, loading, error } = useSelector(state => state.enterpriseDataSlice);
-
 // page loading events - start
 
-useEffect(() => {        
+useEffect(() => {
     dispatch(fetchEnterprises({header})); // Dispatch the async thunk when the component mounts
   }, dispatch);
 
@@ -83,7 +82,7 @@ useEffect(() => {
   const gateways = selectedLocationData ? selectedLocationData.gateways : [];
   const selectedGatewayData = gateways.find(gateway => gateway._id === selectedGateway);
   const optimizers = selectedGatewayData ? selectedGatewayData.optimizers:[];
-  const selectedOptimizerData = optimizers.find(optimizer => optimizers._id === selectedOptimizer);
+  const selectedOptimizerData = optimizers.find(optimizer => optimizer._id === selectedOptimizer);
 
   return (
    
@@ -169,12 +168,12 @@ useEffect(() => {
             ))}
         </select>
         </label>
-
+        { hideOptimizer ? "": ( 
         <label className="block mt-4 text-sm w-56">
         <span className="text-gray-700 dark:text-gray-400">
             Optimizer Id
         </span>    
-
+        
         <select 
             className="block w-full mt-1 text-sm dark:text-gray-300 dark:border-gray-600 dark:bg-gray-700 form-select focus:border-purple-400 focus:outline-none focus:shadow-outline-purple dark:focus:shadow-outline-gray"
             name="optimizerId" 
@@ -189,7 +188,9 @@ useEffect(() => {
             </option>
             ))}
         </select>
-        </label>
+        
+        </label>)
+        }
     </div>
       
   );

@@ -1,7 +1,65 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { BYPASS} from "../../api/api";
+import { BYPASS, SCHEDULE_BYPASS, CANCEL_SCHEDULE_BYPASS, INSTANT_BYPASS_ONOFF } from "../../api/api";
 
-export const Bypass = createAsyncThunk(
+export const ScheduleBypass = createAsyncThunk(
+    "ScheduleBypass",  
+    async ({ data, header }, { rejectWithValue }) => {
+      try {       
+        const response = await SCHEDULE_BYPASS(data, header);
+        return response.data;
+      } catch (error) {
+       if (
+          error.response.data.message === "Invalid token" ||
+          error.response.data.message === "Access denied"
+        ) {
+          window.localStorage.clear();
+          window.location.href = "./";
+        }
+        return rejectWithValue(error.response.data);
+      }
+    }
+  );
+
+  export const InstantBypassOnOff = createAsyncThunk(
+    "InstantBypassOnOff",  
+    async ({ data, header }, { rejectWithValue }) => {
+      try {       
+        const response = await INSTANT_BYPASS_ONOFF(data, header);
+        return response.data;
+      } catch (error) {
+       if (
+          error.response.data.message === "Invalid token" ||
+          error.response.data.message === "Access denied"
+        ) {
+          window.localStorage.clear();
+          window.location.href = "./";
+        }
+        return rejectWithValue(error.response.data);
+      }
+    }
+  );
+
+  export const CancelScheduleByPass = createAsyncThunk(
+    "CancelScheduleByPass",  
+    async ({ data, header }, { rejectWithValue }) => {
+      try {       
+        const response = await CANCEL_SCHEDULE_BYPASS(data, header);
+        return response.data;
+      } catch (error) {
+       if (
+          error.response.data.message === "Invalid token" ||
+          error.response.data.message === "Access denied"
+        ) {
+          window.localStorage.clear();
+          window.location.href = "./";
+        }
+        return rejectWithValue(error.response.data);
+      }
+    }
+  );
+
+
+  export const Bypass = createAsyncThunk(
     "Bypass",
   
     async ({ data, header }, { rejectWithValue }) => {
@@ -22,10 +80,10 @@ export const Bypass = createAsyncThunk(
     }
   );
 
+
   const initialState = {
     status: "",
-    loading: false,
-  
+    loading: false,  
     bypass_response: "",
     bypass_error: null,
   
@@ -38,8 +96,7 @@ export const Bypass = createAsyncThunk(
       // Logout reducer
       clearError: (state) => {
         state.error = null;
-      },
-     
+      },     
       clearResponse: (state) => {
         state.bypass_response = "";
       },

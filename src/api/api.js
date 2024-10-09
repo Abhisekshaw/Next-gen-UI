@@ -87,6 +87,9 @@ export const GETCURRENTDATA = (OptimizerId, header) => api.post(`/api/hardware/g
 
 // BY PASS
 export const BYPASS = (data, header) => api.post(`/api/hardware/bypass/optimizers`, data, header);
+export const SCHEDULE_BYPASS = (data, header) => api.post(`/api/hardware/bypass/optimizers`, data, header);
+export const INSTANT_BYPASS_ONOFF = (data, header) => api.post(`/api/hardware/bypass/optimizers`, data, header);
+export const CANCEL_SCHEDULE_BYPASS = (data, header) => api.post(`/api/hardware/bypass/optimizers`, data, header);
 
 //DELETE
 export const DELETE = (deleteData, header) => api.post(`/api/admin/delete/all`, deleteData, header);
