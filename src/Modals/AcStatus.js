@@ -49,9 +49,10 @@ const secondsInaDay = (3600 * 24);
 function processSingleRecord(item, series, dateLabel, runningCounter,
   lastETime, maxCount, categories) {
   
+  let lastETimeVal = lastETime;
 
   console.log(JSON.stringify(categories) + ", dateLabel:" + dateLabel + 
-  ", runningCounter:" + runningCounter + ", lastETime:" + lastETime + ", maxCount:" + maxCount);
+  ", runningCounter:" + runningCounter + ", lastETimeVal:" + lastETimeVal + ", maxCount:" + maxCount);
 
   let adjustedStartTime = item.starttime + timeAdjustmentForIST;
   let adjustedEndTime = item.endtime + timeAdjustmentForIST;
@@ -62,10 +63,10 @@ function processSingleRecord(item, series, dateLabel, runningCounter,
     categories.push(dateLabel);
     runningCounter = 0;
 
-    lastETime = 0;
+    lastETimeVal = 0;
     // check if the time needs to be filled 
-    if (startTimeSeconds > 0) {
-      lastETime = adjustedStartTime - (startTimeSeconds);
+    if (startTimeSeconds >= 0) {
+      lastETimeVal = adjustedStartTime - (startTimeSeconds);
     }
   }
   else if (dateLabel != item.date) {
@@ -105,23 +106,24 @@ function processSingleRecord(item, series, dateLabel, runningCounter,
       data: []
     })
   }
-  if (adjustedStartTime - lastETime > 1) {
+  console.log("adjustedStartTime: "+ adjustedStartTime + " , lastETime :" + lastETimeVal);
+  if (lastETimeVal != 0 && (adjustedStartTime - lastETimeVal > 1)) {
     // TODO handle the scenario where the maxDateLabel which creates the largest number of time block is missing some data.
     // then it needs to be added across all the other ones.
     // may be it is a good idea to process it earlier and get count or may be fix the count logic
     // we do not what this is        
-    series[runningCounter].data.push({ y: (adjustedStartTime - lastETime) * 1000, color: "gray" });
+    series[runningCounter].data.push({ y: (adjustedStartTime - lastETimeVal) * 1000, color: "gray" });
     runningCounter++;
     // adding the additional counter for the regular block
     series.push({
       name: dateLabel + "-" + runningCounter,
       data: []
     })
-    lastETime = adjustedStartTime;
+    lastETimeVal = adjustedStartTime;
   }
   series[runningCounter].data.push({ y: (adjustedEndTime - adjustedStartTime) * 1000, color: (item.acstatus === "ON" ? "#98fb98" : "#FF5733") });
-  lastETime = adjustedEndTime;
-  return {runningCounter: runningCounter, lastETime: lastETime, dateLabel:dateLabel};
+  lastETimeVal = adjustedEndTime;
+  return {runningCounter: runningCounter, lastETime: lastETimeVal, dateLabel:dateLabel};
 }
 
 const AcStatus = ({ data, closeModal, id }) => {
